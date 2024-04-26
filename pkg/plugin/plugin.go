@@ -201,19 +201,21 @@ func getRouteRule[T1 GatewayAPIBackendRef, T2 GatewayAPIRouteRule[T1], T3 Gatewa
 	return nil, routeRuleList.Error()
 }
 
-func getBackendRef[T1 GatewayAPIBackendRef, T2 GatewayAPIRouteRule[T1], T3 GatewayAPIRouteRuleList[T1, T2]](backendRefName string, routeRuleList T3) (T1, error) {
+func getBackendRefs[T1 GatewayAPIBackendRef, T2 GatewayAPIRouteRule[T1], T3 GatewayAPIRouteRuleList[T1, T2]](backendRefName string, routeRuleList T3) ([]T1, error) {
 	var backendRef T1
 	var routeRule T2
+	var matchedRefs []T1
+
 	for next, hasNext := routeRuleList.Iterator(); hasNext; {
 		routeRule, hasNext = next()
 		for next, hasNext := routeRule.Iterator(); hasNext; {
 			backendRef, hasNext = next()
 			if backendRefName == backendRef.GetName() {
-				return backendRef, nil
+				matchedRefs = append(matchedRefs, backendRef)
 			}
 		}
 	}
-	return nil, routeRuleList.Error()
+	return matchedRefs, routeRuleList.Error()
 }
 
 func removeManagedRouteEntry(managedRouteMap ManagedRouteMap, routeRuleList HTTPRouteRuleList, managedRouteName string, httpRouteName string) (HTTPRouteRuleList, error) {
