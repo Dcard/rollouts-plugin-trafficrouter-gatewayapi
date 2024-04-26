@@ -32,21 +32,29 @@ func (r *RpcPlugin) setHTTPRouteWeight(rollout *v1alpha1.Rollout, desiredWeight 
 	canaryServiceName := rollout.Spec.Strategy.Canary.CanaryService
 	stableServiceName := rollout.Spec.Strategy.Canary.StableService
 	routeRuleList := HTTPRouteRuleList(httpRoute.Spec.Rules)
-	canaryBackendRef, err := getBackendRef[*HTTPBackendRef, *HTTPRouteRule](canaryServiceName, routeRuleList)
+	canaryBackendRefs, err := getBackendRefs[*HTTPBackendRef, *HTTPRouteRule](canaryServiceName, routeRuleList)
 	if err != nil {
 		return pluginTypes.RpcError{
 			ErrorString: err.Error(),
 		}
 	}
-	canaryBackendRef.Weight = &desiredWeight
-	stableBackendRef, err := getBackendRef[*HTTPBackendRef, *HTTPRouteRule](stableServiceName, routeRuleList)
+
+	for _, ref := range canaryBackendRefs {
+		ref.Weight = &desiredWeight
+	}
+
+	stableBackendRefs, err := getBackendRefs[*HTTPBackendRef, *HTTPRouteRule](stableServiceName, routeRuleList)
 	if err != nil {
 		return pluginTypes.RpcError{
 			ErrorString: err.Error(),
 		}
 	}
 	restWeight := 100 - desiredWeight
-	stableBackendRef.Weight = &restWeight
+
+	for _, ref := range stableBackendRefs {
+		ref.Weight = &restWeight
+	}
+
 	updatedHTTPRoute, err := httpRouteClient.Update(ctx, httpRoute, metav1.UpdateOptions{})
 	if r.IsTest {
 		r.UpdatedHTTPRouteMock = updatedHTTPRoute
